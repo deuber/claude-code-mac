@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Install Claude Code on macOS, choose a permission mode, control file access, and handle leaked secrets.">
+<title>Claude Code on Mac</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column; numbered install sequence, then reference sections with a left label rail on wide screens */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1c2230;
+  --muted: #5b6475;
+  --line: #dde1e8;
+  --accent: #c2571a;
+  --accent-soft: #fbeee5;
+  --code-bg: #eef0f4;
+  --warn: #9a3412;
+  --warn-bg: #fff4ec;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "IBM Plex Sans", -apple-system, "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171d; --surface: #1b1f27; --fg: #e6e9ef; --muted: #9aa3b4; --line: #2c323d;
+    --accent: #f08a4b; --accent-soft: #2e2119; --code-bg: #22272f; --warn: #fdba8c; --warn-bg: #2a1d16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171d; --surface: #1b1f27; --fg: #e6e9ef; --muted: #9aa3b4; --line: #2c323d;
+  --accent: #f08a4b; --accent-soft: #2e2119; --code-bg: #22272f; --warn: #fdba8c; --warn-bg: #2a1d16;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 48px 72px;
+}
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.2rem); letter-spacing: -0.02em; }
+h2 { font-size: 1.6rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+header { display: flex; flex-direction: column; gap: 14px; }
+header p { color: var(--muted); font-size: 1.08rem; }
+.prompt-line { font-family: var(--mono); font-size: 0.9rem; color: var(--muted); }
+.prompt-line b { color: var(--accent); font-weight: 500; }
+
+section { display: flex; flex-direction: column; gap: 18px; }
+.section-head { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 28px; counter-reset: step; }
+ol.steps > li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 14px; counter-increment: step; }
+ol.steps > li::before {
+  content: counter(step); grid-row: span 3;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-weight: 500; font-size: 0.9rem;
+  background: var(--accent-soft); color: var(--accent);
+}
+.step-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.option-label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.option-label em { font-style: normal; color: var(--accent); font-weight: 500; }
+
+.code {
+  position: relative; background: var(--code-bg); border-radius: 8px;
+  font-family: var(--mono); font-size: 0.86rem; line-height: 1.55;
+  overflow-x: auto;
+}
+.code pre { margin: 0; padding: 12px 84px 12px 14px; white-space: pre; }
+.code .c { color: var(--muted); }
+.copy {
+  position: absolute; top: 7px; right: 7px;
+  font: 500 0.72rem var(--mono); letter-spacing: 0.04em;
+  padding: 4px 9px; border-radius: 5px; cursor: pointer;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+}
+.copy:hover { border-color: var(--accent); color: var(--accent); }
+.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+code { font-family: var(--mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+kbd { font-family: var(--mono); font-size: 0.82em; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--surface); }
+
+ul.plain { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; max-width: 65ch; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td:first-child { white-space: nowrap; font-weight: 600; }
+.chip { display: inline-block; font: 500 0.72rem var(--mono); padding: 2px 8px; border-radius: 99px; background: var(--code-bg); color: var(--muted); margin-left: 6px; }
+tr.danger td:first-child { color: var(--warn); }
+tr.current .chip { background: var(--accent-soft); color: var(--accent); }
+
+.callout { background: var(--warn-bg); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.callout strong { color: var(--warn); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.grid2 > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 18px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+*, *::before, *::after { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">macOS · zsh · Claude Code CLI</span>
+    <h1>Claude Code on Mac</h1>
+    <p>Install, sign in, and keep control of what Claude can read, run, and send. A quick reference built from one setup conversation.</p>
+    <span class="prompt-line"><b>~/Projects/your-project %</b> claude</span>
+  </header>
+
+  <section aria-labelledby="install">
+    <div class="section-head">
+      <span class="eyebrow">Setup</span>
+      <h2 id="install">Install in four steps</h2>
+    </div>
+    <ol class="steps">
+      <li><div class="step-body">
+        <h3>Install the CLI</h3>
+        <span class="option-label"><em>Recommended</em> · native installer</span>
+        <div class="code"><pre>curl -fsSL https://claude.ai/install.sh | bash</pre></div>
+        <span class="option-label">Homebrew</span>
+        <div class="code"><pre>brew install --cask claude-code</pre></div>
+        <span class="option-label">npm · Node 18+, no sudo</span>
+        <div class="code"><pre>npm install -g @anthropic-ai/claude-code</pre></div>
+      </div></li>
+      <li><div class="step-body">
+        <h3>Check the install</h3>
+        <div class="code"><pre>claude --version
+claude doctor</pre></div>
+        <p>If you see <code>command not found</code>, open a new terminal, or add <code>~/.local/bin</code> to <code>PATH</code> in <code>~/.zshrc</code>.</p>
+      </div></li>
+      <li><div class="step-body">
+        <h3>Start it in a project and sign in</h3>
+        <div class="code"><pre>cd ~/Projects/your-project
+claude</pre></div>
+        <p>The first run opens your browser to sign in with a Claude plan or an Anthropic Console account. Switch accounts later with <code>/login</code>.</p>
+      </div></li>
+      <li><div class="step-body">
+        <h3>Finish setup</h3>
+        <ul class="plain">
+          <li><code>/init</code> writes a <code>CLAUDE.md</code> with project notes.</li>
+          <li><code>/terminal-setup</code> makes <kbd>Shift</kbd>+<kbd>Enter</kbd> add a new line.</li>
+          <li><code>/config</code> sets theme and model; <code>/ide</code> connects VS Code or JetBrains.</li>
+          <li>Updates install on their own. Run <code>claude update</code> to update now.</li>
+        </ul>
+      </div></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="modes">
+    <div class="section-head">
+      <span class="eyebrow">Permissions</span>
+      <h2 id="modes">Permission modes</h2>
+    </div>
+    <p>Press <kbd>Shift</kbd>+<kbd>Tab</kbd> to cycle modes. Bypass mode can only be turned on with a flag at launch.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mode</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td>Default</td><td>Asks before edits and most shell commands.</td></tr>
+          <tr><td>Accept edits</td><td>Edits files without asking. Still asks before shell commands.</td></tr>
+          <tr class="current"><td>Auto <span class="chip">fewer prompts</span></td><td>A safety check approves routine actions and stops risky ones.</td></tr>
+          <tr><td>Plan</td><td>Read-only. Claude researches and proposes a plan.</td></tr>
+          <tr class="danger"><td>Bypass <span class="chip">YOLO</span></td><td>No prompts, no checks. Started with <code>--dangerously-skip-permissions</code>. Use it only in a container or throwaway VM.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="files">
+    <div class="section-head">
+      <span class="eyebrow">Privacy</span>
+      <h2 id="files">Control which files Claude can read</h2>
+    </div>
+    <div class="grid2">
+      <div>
+        <h3>See every action</h3>
+        <p>Every file read, edit, and command appears in the terminal. Press <kbd>Ctrl</kbd>+<kbd>O</kbd> to see the full transcript.</p>
+      </div>
+      <div>
+        <h3>Limited to the project</h3>
+        <p>Claude can freely read only the working folder and folders added with <code>/add-dir</code>. Review the rules with <code>/permissions</code>.</p>
+      </div>
+      <div>
+        <h3>OS-level sandbox</h3>
+        <p>Run <code>/sandbox</code>. macOS Seatbelt then limits shell commands to allowed folders and websites.</p>
+      </div>
+      <div>
+        <h3>Block sensitive paths</h3>
+        <p>Deny rules apply in every mode except bypass.</p>
+      </div>
+    </div>
+    <span class="option-label">~/.claude/settings.json</span>
+    <div class="code"><pre>{
+  "permissions": {
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(./.env)"
+    ]
+  }
+}</pre></div>
+  </section>
+
+  <section aria-labelledby="network">
+    <div class="section-head">
+      <span class="eyebrow">Network</span>
+      <h2 id="network">Internet access and your own model</h2>
+    </div>
+    <p>The model runs on Anthropic's servers, so Claude Code needs the internet for every message, for signing in, and for updates. Files Claude reads are sent along with the conversation. It has no offline mode.</p>
+    <p>You can point it at a model you host, if that model's server accepts the Anthropic Messages API format (use a proxy like LiteLLM for OpenAI-style servers). Anthropic doesn't support this setup, and the model must handle tool calls and long context well.</p>
+    <div class="code"><pre><span class="c"># point Claude Code at your own server</span>
+export ANTHROPIC_BASE_URL="http://localhost:8000"
+export ANTHROPIC_AUTH_TOKEN="your-server-token"
+export ANTHROPIC_MODEL="my-model-name"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+claude</pre></div>
+  </section>
+
+  <section aria-labelledby="secrets">
+    <div class="section-head">
+      <span class="eyebrow">If something goes wrong</span>
+      <h2 id="secrets">You shared a token or password</h2>
+    </div>
+    <div class="callout">
+      <strong>Treat it as exposed and rotate it now.</strong>
+      <p>Once sent, it's on Anthropic's servers under your retention policy, and saved in plain text in <code>~/.claude/projects/</code>.</p>
+    </div>
+    <ul class="plain">
+      <li>Revoke the token and create a new one in the service it belongs to.</li>
+      <li>Find and delete the local copy of the conversation:</li>
+    </ul>
+    <div class="code"><pre>grep -rl "part-of-the-secret" ~/.claude/projects/</pre></div>
+    <ul class="plain">
+      <li>If it was committed, rotate it first, then clean the history with <code>git filter-repo</code>.</li>
+      <li>Next time, give Claude the variable name, like <code>$GITHUB_TOKEN</code>, not its value.</li>
+    </ul>
+  </section>
+
+  <footer>A personal quick reference. Check the <a href="https://docs.claude.com/en/docs/claude-code/overview" style="color:var(--accent)">Claude Code docs</a> for current details.</footer>
+</main>
+
+<script>
+document.querySelectorAll('.code').forEach(function (block) {
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'copy';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', function () {
+    var text = block.querySelector('pre').innerText;
+    var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); };
+    var fallback = function () {
+      var range = document.createRange();
+      range.selectNodeContents(block.querySelector('pre'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      btn.textContent = 'Selected';
+    };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+  block.appendChild(btn);
+});
+</script>
+</body>
+</html>
